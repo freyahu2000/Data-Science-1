@@ -1,0 +1,169 @@
+---
+title: "Data Challenge 1: Dairy Cow Visualizations"
+author: "Ziyan Hu"
+date: "Due 5:59pm on September 27, 2023"
+output:
+  html_document:
+---
+
+````{r}
+# load in the required libraries 
+library(readr)
+library(tidyverse)
+library(RColorBrewer)
+
+# read the data
+state_milk_production <- read_csv("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2019/2019-01-29/state_milk_production.csv",show_col_types = FALSE)
+clean_cheese <- read_csv("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2019/2019-01-29/clean_cheese.csv",show_col_types = FALSE)
+fluid_milk_sales <- read_csv("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2019/2019-01-29/fluid_milk_sales.csv",show_col_types = FALSE)
+milk_products_facts <- read_csv("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2019/2019-01-29/milk_products_facts.csv",show_col_types = FALSE)
+milkcow_facts <- read_csv("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2019/2019-01-29/milkcow_facts.csv",show_col_types = FALSE)
+
+# disable scientific notation
+options(scipen = 999)
+````
+
+### Figure 1
+Make a scatter plot showing the milk production in pounds versus the average number of milk cows using `milkcow_facts`. Write a caption for this plot.
+
+- The x-axis will be the number of milk cows (in millions) and the y-axis will be milk production (in millions of pounds)
+- Color the plot using a continuous variable of years
+- Label the axes (do not use the variable name)
+- Add a title for the plot
+- Label the legend (do not use the variable name)
+
+
+#### Solution
+```{r}
+# plot the milk production in pounds versus the average number of milk cow
+milkcow_facts %>%
+  ggplot(aes(x = avg_milk_cow_number/10^6, y = milk_production_lbs/10^6, color = year)) + # divide by 1 milion
+  geom_point(size = 3) + # make scatter plot
+  labs(x = "Number of Milk Cows \n(Millions)", # relabel y-axis
+       y = "Total Milk Production \n(Millions of Pounds)", # relabel x-axis
+       title = "Total Milk Production vs. Average Number of Milk Cows Over Years", # add a title
+       color = "Year") + # relabel the legend
+  scale_color_continuous()
+```
+
+### Figure 2
+Examine the milk total milk production in each region over time using `state_milk_production`. We will plot line plots for the milk production versus the year faceted by region. Write a caption for this plot.
+
+- First, find the total production of milk each year by region (hint: use `summarise()` to find this)
+- The x-axis will be time and the y-axis will be total milk produced (in millions of pounds) in the region that year
+- Make line plots and color each line a different color
+- Facet the plot by region
+- Label the axes (do not use the variable name)
+- Add a title for the plot
+- Remove the legend from the plot
+
+#### Solution
+```{r}
+# find the total production of milk by region by summarise
+region_milk_production <- state_milk_production %>%
+  group_by(year,region) %>%
+  summarise(total_production_by_region = sum(milk_produced),.groups = "drop") 
+
+# plot the total milk production vs. year by region
+region_milk_production %>%
+  ggplot(aes(x = year, y = total_production_by_region/10^6, color = region)) +  # divide by 1 million
+  geom_line(lwd = 1) +  # add the line plot
+  facet_wrap(~region, nrow = 4, scales = "free_y") +  # facet the plot by region
+  labs(x = "Year",
+       y = "Total Milk Production \n(Millions of Pounds)",
+       title = "Milk Production vs. the Year by Region") +  # label the axes and add a title
+  theme(legend.position = "none")  # remove the legend
+
+```
+
+### Figure 3
+Make a line plot showing the amount (in pounds) of each milk products sold over time using `fluid_milk_sales`. Write a caption for this plot.
+
+- Do not include the category ‘Total Production’ in the plot
+- The x-axis will be time and the y-axis will be pounds of product
+- Each milk product will be a separate line on the plot
+- A different color will be assigned for each milk product
+- Make the plot on the log scale for better visualization
+- Label the axes (do not use the variable name)
+- Add a title for the plot
+- Label the legend (do not use the variable name)
+
+#### Solution
+```{r}
+# create new data frame
+new_fluid_milk_sales <- fluid_milk_sales %>%
+  filter(milk_type != "Total Production")  # delete the category 'Total Production'
+
+# plot the milk product sales over time
+new_fluid_milk_sales %>%
+  ggplot(aes(x = year, y = log10(pounds), color = milk_type)) +  # make the plot on a log scale
+  geom_line(lwd = 1) +  # add the line
+  labs(x = "Years", y = "Pounds of Milk Product Sold on Log Scale (Base 10)", title = "Milk Product Sales over Years", color = "Milk Category")  # label the axes and add a title
+```
+
+### Figure 4
+Make a stacked bar plot of the different type of cheeses consumed over time using a long format version of `clean_cheese` that you create. Write a caption for this plot.
+
+Data wrangling (hint: create a new dataframe called `clean_cheese_long`):
+
+- Remove all of the total cheese variables (we do not want these in the plot)
+- Change the `clean_cheese` data to long format using `pivot_longer()`
+- Make sure all of the cheese categories are capitalized
+
+Plotting:
+
+- The x-axis will be time and the y-axis will be pounds of cheese
+- Color the stacked bar plot by the different types of cheese
+- Label the axes (do not use the variable name)
+- Add a title for the plot
+- Change the color of the plot using a palette from RColorBrewer (note that not all palettes will have enough colors for the plot)
+
+#### Solution
+```{r}
+# create a new data frame
+clean_cheeese_long <- clean_cheese %>%
+  select(-matches("Total")) %>%  # remove total cheese variables
+  pivot_longer(-Year, 
+               names_to = "Cheese", 
+               values_to = "Pounds")  # change the data to long format
+
+# plot
+clean_cheeese_long %>%
+  ggplot(aes(x = Year, y = Pounds, fill = Cheese)) +  # color by cheese
+  geom_bar(stat = "identity") +  # add the bar plot
+  labs(title = "Cheese Consumption over Years",
+       x = "Years",
+       y = "Cheese(in pounds)") +  # relabel the axes and add a title
+  scale_fill_brewer(palette = "Set3")  # change the color
+```
+
+### Figure 5
+Time to be creative! Make an original figure using the data. Join two of the dataframes together and use variables from both sides of the join to make this figure. This figure should tell a story and be easy to understand (just as the figures above are!). Change the colors of this plot from the default ggplot2 colors. Write a caption for this plot.
+
+#### Solution
+```{r}
+milk_data <- milkcow_facts %>%
+  left_join(fluid_milk_sales %>%
+              filter(milk_type == "Whole"), 
+            by = "year")
+milk_data %>%
+  ggplot(aes(x=avg_milk_cow_number/10^6, y = pounds/10^6)) +
+  geom_point(size = 3, color = "skyblue") +  # Add scatter points
+  geom_smooth(method = "lm") +
+  labs(x = "Number of Milk Cows\n(Millions)",
+       y = "Whole Milk Sales\n(Millions of Pounds)",
+  title = "Relationship Between Number of Milk Cows and \nWhole Milk Sales Over Time",
+       caption = "This figure shows the relationship between the number of milk cows in the U.S. and the total pounds of whole milk sold each year from 1975 to 2017. A linear regression line is fit to the data, showing a strong positive correlation between number of milk cows and whole milk sales. As the dairy cow population has increased over time, total whole milk sales have also steadily risen.") 
+
+```
+
+
+
+
+
+
+
+
+
+
+
