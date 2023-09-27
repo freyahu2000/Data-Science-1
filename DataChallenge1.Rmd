@@ -1,10 +1,11 @@
 ---
 title: "Data Challenge 1: Dairy Cow Visualizations"
-author: "Ziyan Hu"
+author: "Ziyan Hu "
 date: "Due 5:59pm on September 27, 2023"
 output:
   html_document:
 ---
+link to the github: https://github.com/freyahu2000/Data-Science-1
 
 ````{r}
 # load in the required libraries 
@@ -43,8 +44,10 @@ milkcow_facts %>%
        y = "Total Milk Production \n(Millions of Pounds)", # relabel x-axis
        title = "Total Milk Production vs. Average Number of Milk Cows Over Years", # add a title
        color = "Year") + # relabel the legend
-  scale_color_continuous()
+  scale_fill_continuous()
 ```
+
+Figure 1 shows the total number of milk cows (in Millions) and corresponding milk production (in Millions of Pounds) in the U.S. from 1975-2017. A negative correlation is observed, with total milk production increasing as number of milk cows decrease over time. The total milk production has been increased in 2000s and 2010s while the number of milk cows have no significant change.  
 
 ### Figure 2
 Examine the milk total milk production in each region over time using `state_milk_production`. We will plot line plots for the milk production versus the year faceted by region. Write a caption for this plot.
@@ -69,12 +72,14 @@ region_milk_production %>%
   ggplot(aes(x = year, y = total_production_by_region/10^6, color = region)) +  # divide by 1 million
   geom_line(lwd = 1) +  # add the line plot
   facet_wrap(~region, nrow = 4, scales = "free_y") +  # facet the plot by region
-  labs(x = "Year",
+  labs(x = "Time (in Years)",
        y = "Total Milk Production \n(Millions of Pounds)",
        title = "Milk Production vs. the Year by Region") +  # label the axes and add a title
   theme(legend.position = "none")  # remove the legend
 
 ```
+
+Figure 2 displays total milk production over time by region in the U.S. from 1970-2017 using the line plots. The Mountain, Pacific, Northeast, Northern Plains and Southern Plains all show increasing milk production since 1970, while the Appalachian and Delta States show the decrease and Northeast shows the steady growth. Also, Cornbelt and Southeast shows the significant fluctuation between 1970 and 2017. Overall, total U.S. milk production has increased nearly 60% over the past 40+ years.
 
 ### Figure 3
 Make a line plot showing the amount (in pounds) of each milk products sold over time using `fluid_milk_sales`. Write a caption for this plot.
@@ -98,8 +103,10 @@ new_fluid_milk_sales <- fluid_milk_sales %>%
 new_fluid_milk_sales %>%
   ggplot(aes(x = year, y = log10(pounds), color = milk_type)) +  # make the plot on a log scale
   geom_line(lwd = 1) +  # add the line
-  labs(x = "Years", y = "Pounds of Milk Product Sold on Log Scale (Base 10)", title = "Milk Product Sales over Years", color = "Milk Category")  # label the axes and add a title
+  labs(x = "Time (in Years)", y = "Pounds of Milk Product Sold on Log Scale (Base 10)", title = "Milk Product Sales over Years", color = "Milk Category")  # label the axes and add a title
 ```
+
+Figure 3 displays U.S. sales of various milk products from 1975-2017 using line plots on a logarithmic scale. Total pounds sold increased over times, led by major gains in flavored (Not Whole) and Low Fat milk. In contrast, whole milk and buttermilk show the decrease over the decades. Since the 2005, reduced fat milk has surpassed whole milk as the top-selling milk product, reflecting shifts in consumer preferences. These trends reflect changing consumer preferences and the dairy industry’s focus.
 
 ### Figure 4
 Make a stacked bar plot of the different type of cheeses consumed over time using a long format version of `clean_cheese` that you create. Write a caption for this plot.
@@ -132,31 +139,35 @@ clean_cheeese_long %>%
   ggplot(aes(x = Year, y = Pounds, fill = Cheese)) +  # color by cheese
   geom_bar(stat = "identity") +  # add the bar plot
   labs(title = "Cheese Consumption over Years",
-       x = "Years",
+       x = "Time (in Years)",
        y = "Cheese(in pounds)") +  # relabel the axes and add a title
   scale_fill_brewer(palette = "Set3")  # change the color
 ```
+
+Figure 4 displays U.S. cheese consumption from 1970 to 2017 using stacked bar charts. Total pounds of cheese consumed increased over time, led by significant gains in mozzarella. Consumption of cheddar, Italian other, American other and cream & neufchatel cheese grew more slowly, while foods and spread cheese declined. 
 
 ### Figure 5
 Time to be creative! Make an original figure using the data. Join two of the dataframes together and use variables from both sides of the join to make this figure. This figure should tell a story and be easy to understand (just as the figures above are!). Change the colors of this plot from the default ggplot2 colors. Write a caption for this plot.
 
 #### Solution
 ```{r}
+# join milk_facts and fluid_milk_sales
 milk_data <- milkcow_facts %>%
   left_join(fluid_milk_sales %>%
               filter(milk_type == "Whole"), 
             by = "year")
+
+# plot the figure
 milk_data %>%
   ggplot(aes(x=avg_milk_cow_number/10^6, y = pounds/10^6)) +
-  geom_point(size = 3, color = "skyblue") +  # Add scatter points
-  geom_smooth(method = "lm") +
+  geom_point(size = 3, color = "skyblue") +  # change the color of default ggplot2 colors
+  geom_smooth(method = "lm") + # add regression line
   labs(x = "Number of Milk Cows\n(Millions)",
        y = "Whole Milk Sales\n(Millions of Pounds)",
-  title = "Relationship Between Number of Milk Cows and \nWhole Milk Sales Over Time",
-       caption = "This figure shows the relationship between the number of milk cows in the U.S. and the total pounds of whole milk sold each year from 1975 to 2017. A linear regression line is fit to the data, showing a strong positive correlation between number of milk cows and whole milk sales. As the dairy cow population has increased over time, total whole milk sales have also steadily risen.") 
-
+  title = "Relationship Between Number of Milk Cows and \nWhole Milk Sales Over Time")
 ```
 
+Fig 5 uses milk cow and milk sales data to clearly show the relationship between the number of milk cows in US and the total pounds of whole milk sold each year from 1975 to 2017. The linear regression line shows the overall relationship between the two variables. As the number of milk cows increases, the total pounds of whole milk sold also increases. The scatterplot combined with the regression line visually demonstrate the strong positive association between milk cow numbers and whole milk sales over this time period. The close correlation is evidence that the size of the dairy cow herd has a direct postive impact on the total milk supply and sales.
 
 
 
