@@ -60,11 +60,11 @@ all_trash_wheel <- all_trash_wheel %>%
 all_trash_wheels_totals_June_2018 <- all_trash_wheel %>%
   filter(month == "June" & year == "2018") %>%
   group_by(wheel, trash_type) %>%
-  summarise(total = sum(number))
+  summarise(total = sum(number),.groups = "drop")
 
 # Create a faceted bar plot for trash totals in June 2018
 all_trash_wheels_totals_June_2018 %>%
-  ggplot(aes(x = total, y = wheel, fill = trash_type)) +
+  ggplot(aes(x = total, y = wheel, fill = wheel)) +
   geom_bar(stat = "identity") +
   facet_wrap(~trash_type, nrow = 4, scales = "free_x") + 
   labs(x = "Total Trash Collected",
@@ -78,8 +78,8 @@ Next we will be examining data from FiveThirtyEight on the S&P closing prices an
 #### Solution
 ```{r q2}
 # Read the S&P and unemployment data from CSV files
-snp <- read_csv("data/snp.csv")
-unemployment <- read_csv("data/unemployment.csv")
+snp <- read.csv("data/snp.csv")
+unemployment <- read.csv("data/unemployment.csv")
 
 # Process the S&P data
 snp <- snp %>%
@@ -98,7 +98,7 @@ snp_plot <- snp %>%
   ggplot(aes(x = Date, y = close)) +
   geom_line(color = "#69b3a2") +
   labs(y = "S&P Average", x = "Date", title = "S&P Average and Unemployment Rate by Date") +
-  scale_y_continuous(sec.axis = sec_axis(~./200, name = "Unemployment Rate")) +
+  scale_y_continuous(sec.axis = sec_axis(~./200, name = "Unemployment Rate (%)")) +
   geom_line(data = unemployment, aes(x = Date, y = Rate * 200), color = "gray") +
   theme(
     axis.title.y = element_text(color = "#69b3a2"),
@@ -117,11 +117,11 @@ Next we will examine the direct relationship between the S&P closing prices and 
 # Create a new data frame called snp_average to calculate the monthly mean of S&P close prices
 snp_average <- snp %>%
   group_by(Year, Month) %>%
-  summarise(Mean = mean(close)) %>%
+  summarise(Mean = mean(close),.groups = "drop") %>%
   mutate(Date = mdy(paste(Month, "01", Year)))
   
 # Display the snp_average data frame
-snp_average
+head(snp_average)
 
 # Join the unemployment data with snp_average based on Date, Month, and Year
 joint_data <- right_join(unemployment, snp_average, by = c("Date", "Month", "Year")) %>%
