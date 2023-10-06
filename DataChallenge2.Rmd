@@ -1,0 +1,147 @@
+---
+title: "Data Challenge 2: Dairy Cow Visualizations"
+author: "Ziyan Hu "
+date: "Due 5:59pm on Oct 9, 2023"
+output:
+  html_document:
+---
+link to the github: https://github.com/freyahu2000/Data-Science-1
+
+````{r}
+# load in the required libraries 
+library(readxl)
+library(tidyverse)
+library(janitor)
+library(lubridate)
+````
+
+### Problem 1
+We will be working with data from Mr. Trash Wheel, a water wheel trash collection device that removed trash from the Inner Harbor in Baltimore, Maryland. There are three trash wheels we will be exploring (Mr. Trash Wheel, Professor Trash Wheel, and Captain Trash Wheel). I have provided you the data for this on Canvas in the Excel spreadsheet titled `Trash-Wheel-Collection-Totals-8-6-19.xlsx.`
+
+#### Solution
+```{r q1}
+# Read data from three trash wheels
+mr_trash_wheel <- read_excel("data/Trash-Wheel-Collection-Totals-8-6-19.xlsx", sheet = "Mr. Trash Wheel")
+professor_trash_wheel <- read_excel("data/Trash-Wheel-Collection-Totals-8-6-19.xlsx", sheet = "Professor Trash Wheel")
+captain_trash_wheel <- read_excel("data/Trash-Wheel-Collection-Totals-8-6-19.xlsx", sheet = "Captain Trash Wheel")
+
+# Prepare the data for Mr. Trash Wheel
+mr_trash_wheel <- mr_trash_wheel %>% 
+  clean_names() %>%  # Clean the column names
+  drop_na(dumpster) %>%  # Omit rows that do not include dumpster-specific data 
+  add_column(wheel = "Mr. Trash Wheel") %>%  # Create a new variable
+  select(-x15, -x16, -x17)
+  
+# Repeat the same data preparation process for other trash wheels
+professor_trash_wheel <- professor_trash_wheel %>% 
+  clean_names() %>%  
+  drop_na(dumpster) %>%  
+  add_column(wheel = "Professor Trash Wheel") 
+
+captain_trash_wheel <- captain_trash_wheel %>% 
+  clean_names() %>% 
+  drop_na(dumpster) %>%  
+  add_column(wheel = "Captain Trash Wheel") 
+
+# Bind the three dataframes together and pivot them to a long format
+all_trash_wheel <- bind_rows(mr_trash_wheel,
+                             professor_trash_wheel,
+                             captain_trash_wheel) %>%
+  pivot_longer(cols = -c(dumpster, wheel, year, month, date, weight_tons),
+               names_to = "trash_type",
+               values_to = "number")
+
+# Clean up the trash_type variable
+all_trash_wheel <- all_trash_wheel %>%
+  mutate(trash_type = str_replace(trash_type, "_", " ")) %>% 
+  mutate(trash_type = str_to_title(trash_type))
+
+# Create a new dataframe for trash totals in June 2018
+all_trash_wheels_totals_June_2018 <- all_trash_wheel %>%
+  filter(month == "June" & year == "2018") %>%
+  group_by(wheel, trash_type) %>%
+  summarise(total = sum(number))
+
+# Create a faceted bar plot for trash totals in June 2018
+all_trash_wheels_totals_June_2018 %>%
+  ggplot(aes(x = total, y = wheel, fill = trash_type)) +
+  geom_bar(stat = "identity") +
+  facet_wrap(~trash_type, nrow = 4, scales = "free_x") + 
+  labs(x = "Total Trash Collected",
+       y = "Trash Wheel") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+### Problem 2
+Next we will be examining data from FiveThirtyEight on the S&P closing prices and the unemployment rate. For this problem, the data is provided on Canvas. You will need `snp.csv` and `unemployment.csv`.
+
+#### Solution
+```{r q2}
+# Read the S&P and unemployment data from CSV files
+snp <- read_csv("data/snp.csv")
+unemployment <- read_csv("data/unemployment.csv")
+
+# Process the S&P data
+snp <- snp %>%
+  mutate(Date = mdy(date)) %>%
+  mutate(Date = update(Date, year = ifelse(year(Date) >= 2050, year(Date) - 100, year(Date)))) %>%
+  mutate(Year = year(Date)) %>%
+  mutate(Month = month(Date, label = TRUE))
+
+# Wrangle the unemployment data
+unemployment <- unemployment %>%
+  pivot_longer(-Year, names_to = "Month", values_to = "Rate") %>%
+  mutate(Date = mdy(paste(Month, "01", Year)))
+
+# Plot both the S&P average and the unemployment rate together on the same plot
+snp_plot <- snp %>%
+  ggplot(aes(x = Date, y = close)) +
+  geom_line(color = "#69b3a2") +
+  labs(y = "S&P Average", x = "Date", title = "S&P Average and Unemployment Rate by Date") +
+  scale_y_continuous(sec.axis = sec_axis(~./200, name = "Unemployment Rate")) +
+  geom_line(data = unemployment, aes(x = Date, y = Rate * 200), color = "gray") +
+  theme(
+    axis.title.y = element_text(color = "#69b3a2"),
+    axis.title.y.right = element_text(color = "gray")
+  )
+
+# Display the plot
+print(snp_plot)
+```
+
+### Problem 3
+Next we will examine the direct relationship between the S&P closing prices and the unemployment rate using data from 2000 and onward in a scatterplot.
+
+#### Solution
+```{r}
+# Create a new data frame called snp_average to calculate the monthly mean of S&P close prices
+snp_average <- snp %>%
+  group_by(Year, Month) %>%
+  summarise(Mean = mean(close)) %>%
+  mutate(Date = mdy(paste(Month, "01", Year)))
+  
+# Display the snp_average data frame
+snp_average
+
+# Join the unemployment data with snp_average based on Date, Month, and Year
+joint_data <- right_join(unemployment, snp_average, by = c("Date", "Month", "Year")) %>%
+  filter(Year >= 2000)
+
+# Create a scatter plot to visualize the relationship between S&P 500 Mean Close Price and Unemployment Rate
+joint_data %>% 
+  ggplot(aes(x = Mean, y = Rate, color = Year)) +
+  geom_point() +
+  labs(
+    x = "S&P 500 Mean Close Price",  
+    y = "Unemployment Rate (%)",
+    title = "S&P Closing Price vs. Unemployment Rate Over Years"
+  )
+```
+
+### Problem 4
+Write a paragraph (at least 5 sentences) describing what you observed in the plots in Problems 2 & 3.
+
+#### Solution
+The line plot in Problem 2 focus on comparing the S&P closing price and unemployment rate. Before 1990, we can see unemployment rate fluctuated and S&P closing price stay low, and they have no obvious relationship. After 2000, we can see that the inverse relationship is apparent. As the S&P closing price rises, the unemployment rate tends to fall; As the S&P closing price falls, the unemployment rate tends to rise.
+
+The scatterplot created in Problem 3 focuses on comparing the S&P mean closing price against the unemployment rate from 2000. Each point represents a month, with the points colored by year. The downward slope of the point cloud shows the consistent inverse correlation between the two variables. However, the spread of the points across years indicates that the strength of the relationship varies over time. Overall, these plots effectively illustrate the connection between stock market performance and unemployment in the U.S. economy. As market returns increase, unemployment decreases; As market returns decrease, unemployment increases.
