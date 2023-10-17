@@ -1,0 +1,17 @@
+---
+title: "Data Challenge 3: Coffee Ratings Data"
+author: "Ziyan Hu "
+date: "Due 5:59pm on Oct 25, 2023"
+output:
+  html_document:
+---
+link to the github: https://github.com/freyahu2000/Data-Science-1
+
+```{r}
+## load in the libraries 
+library(readr) 
+
+## read in the data 
+coffee_ratings <- read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-07-07/coffee_ratings.csv')
+```
+
