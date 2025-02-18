@@ -1,0 +1,258 @@
+---
+title: "Data"
+author: "Hexiuli Huang, Ziyan Hu"
+date: "2023-11-09"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+```
+
+# Library
+```{r}
+library(tidycensus)
+library(tidyverse)
+library(plotly)
+library(sf)
+```
+
+# API
+```{r}
+census_api_key("61c59851d8e85b0e23a842d95e2d9a0fe92a2acb", overwrite = TRUE)
+```
+
+#
+```{r}
+vars <- load_variables(2021, "acs5")
+View(vars)
+```
+
+# Median Income
+```{r}
+Medincomepop21 <- get_acs(geography = "county", 
+                   variables = c(medincome = "B19013_001"), 
+                   state = "NJ", 
+                   year = 2021)
+
+Medincomepop21 <- Medincomepop21 %>%
+  mutate(Medincome = estimate) %>%
+  select(GEOID, NAME, Medincome)
+```
+
+# Under 18 Percentage
+```{r}
+Age1_4pop21 <- get_acs(geography = "county", 
+                   variables = c(Age1_4 = "B07401_002"), 
+                   state = "NJ", 
+                   year = 2021)
+
+Age5_17pop21 <- get_acs(geography = "county", 
+                   variables = c(Age5_17 = "B07401_003"), 
+                   state = "NJ", 
+                   year = 2021)
+
+AgeTotalpop21 <- get_acs(geography = "county", 
+                   variables = c(AgeTotal = "B07401_001"), 
+                   state = "NJ", 
+                   year = 2021)
+
+Under18_percentage <- full_join(Age1_4pop21, Age5_17pop21, by = c("GEOID" = "GEOID", "NAME" = "NAME"))
+Under18_percentage <- full_join(Under18_percentage, AgeTotalpop21, by = c("GEOID" = "GEOID", "NAME" = "NAME"))
+
+Under18_percentage <- Under18_percentage %>%
+  mutate(Under18_percentage = round((estimate.x + estimate.y) / estimate * 100, 2)) %>%
+  select(GEOID, NAME, Under18_percentage)
+```
+
+# Total Living Area
+```{r}
+TlivingAreapop21 <- get_acs(geography = "county", 
+                   variables = c(TlivingArea = "B07401_001"), 
+                   state = "NJ", 
+                   year = 2021)
+
+TlivingAreapop21 <- TlivingAreapop21 %>%
+  mutate(TotallivingArea = estimate) %>%
+  select(GEOID, NAME, TotallivingArea)
+```
+
+# Female Percentage
+```{r}
+Femalepop21 <- get_acs(geography = "county", 
+                   variables = c(TotalFemale = "B08406_035"), 
+                   state = "NJ", 
+                   year = 2021)
+
+GenderTotal21 <- get_acs(geography = "county", 
+                   variables = c(TotalFemale = "B08406_001"), 
+                   state = "NJ", 
+                   year = 2021)
+
+female_percentage <- full_join(Femalepop21, GenderTotal21, by = c("GEOID" = "GEOID", "NAME" = "NAME"))
+
+female_percentage <- female_percentage %>%
+  mutate(female_percentage = round(estimate.x / estimate.y * 100, 2)) %>%
+  select(GEOID, NAME, female_percentage)
+```
+
+# Proverty Percentage
+```{r}
+Povertypop21 <- get_acs(geography = "county", 
+                   variables = c(At_Above_150 = "B08522_004"), 
+                   state = "NJ", 
+                   year = 2021)
+
+PovertyTotal21 <- get_acs(geography = "county", 
+                   variables = c(TotalPoverty = "B08522_001"), 
+                   state = "NJ", 
+                   year = 2021)
+
+poverty_percentage <- full_join(Povertypop21, PovertyTotal21, by = c("GEOID" = "GEOID", "NAME" = "NAME"))
+
+poverty_percentage <- poverty_percentage %>%
+  mutate(poverty_percentage = round(100 - (estimate.x / estimate.y * 100), 2)) %>%
+  select(GEOID, NAME, poverty_percentage)
+```
+
+# Disability
+```{r}
+Disability21 <- get_acs(geography = "county", 
+                   variables = c(Disability = "B18140_002"), 
+                   state = "NJ", 
+                   year = 2021)
+
+NoDisability21 <- get_acs(geography = "county", 
+                   variables = c(Disability = "B18140_005"), 
+                   state = "NJ", 
+                   year = 2021)
+
+disability_percentage <- full_join(Disability21, NoDisability21, by = c("GEOID" = "GEOID", "NAME" = "NAME"))
+disability_percentage <- disability_percentage %>%
+  mutate(disability_percentage = round( estimate.x / (estimate.x + estimate.y) * 100, 2)) %>%
+  select(GEOID, NAME, disability_percentage)
+```
+
+# Nativity percentage
+```{r}
+Nativity21 <- get_acs(geography = "county", 
+                   variables = c(Nativity = "B15001_002"), 
+                   state = "NJ", 
+                   year = 2021)
+
+NativityTotal21 <- get_acs(geography = "county", 
+                   variables = c(NativityTotal = "B05001_001"), 
+                   state = "NJ", 
+                   year = 2021)
+
+nativity_percentage <- full_join(Nativity21, NativityTotal21, by = c("GEOID" = "GEOID", "NAME" = "NAME"))
+nativity_percentage <- nativity_percentage %>%
+  mutate(nativity_percentage = round(estimate.x / estimate.y*100, 2)) %>%
+  select(GEOID, NAME, nativity_percentage)
+```
+
+
+# percentage of households receive foodstamp
+```{r}
+Foodstamp21 <- get_acs(geography = "county", 
+                   variables = c(Foodstamp = "B22008_002"), 
+                   state = "NJ", 
+                   year = 2021)
+
+FoodstampTotal21 <- get_acs(geography = "county", 
+                   variables = c(FoodstampTotal = "B22008_001"), 
+                   state = "NJ", 
+                   year = 2021)
+
+foodstamp_percentage <- full_join(Foodstamp21, FoodstampTotal21, by = c("GEOID" = "GEOID", "NAME" = "NAME"))
+foodstamp_percentage <- foodstamp_percentage %>%
+  mutate(foodstamp_percentage = round(estimate.x / estimate.y*100, 2)) %>%
+  select(GEOID, NAME, foodstamp_percentage)
+```
+
+# bachelor's degree attainment percentage
+```{r}
+bachelorDegree21 <- get_acs(geography = "county", 
+                   variables = c(bachelorDegree = "B15003_023"), 
+                   state = "NJ", 
+                   year = 2021)
+
+degreeTotal21 <- get_acs(geography = "county", 
+                   variables = c(degreeTota = "B15003_001"), 
+                   state = "NJ", 
+                   year = 2021)
+
+bachelor_percentage <- full_join(bachelorDegree21,degreeTotal21, by = c("GEOID" = "GEOID", "NAME" = "NAME"))
+bachelor_percentage <- bachelor_percentage %>%
+  mutate(bachelor_percentage = round(estimate.x / estimate.y*100, 2)) %>%
+  select(GEOID, NAME, bachelor_percentage)
+```
+
+# married population percentage
+```{r}
+Married21 <- get_acs(geography = "county", 
+                   variables = c(married = "B06008_003"), 
+                   state = "NJ", 
+                   year = 2021)
+
+MarriedTotal21 <- get_acs(geography = "county", 
+                   variables = c(marriedTotal = "B06008_001"), 
+                   state = "NJ", 
+                   year = 2021)
+marrried_percentage <- full_join(Married21,MarriedTotal21, by = c("GEOID" = "GEOID", "NAME" = "NAME"))
+marrried_percentage <- marrried_percentage %>%
+  mutate(marrried_percentage = round(estimate.x / estimate.y*100, 2)) %>%
+  select(GEOID, NAME, marrried_percentage)
+```
+
+# merge
+```{r}
+df_list <- list(Medincomepop21, Under18_percentage, TlivingAreapop21, female_percentage, 
+                poverty_percentage, disability_percentage, nativity_percentage, foodstamp_percentage,
+                bachelor_percentage, marrried_percentage)
+
+#merge all data frames in list
+data <- df_list %>% 
+  reduce(full_join, by = c("GEOID" = "GEOID", "NAME" = "NAME"))
+```
+
+# export
+```{r}
+write.csv(data, file = "Group7_ACS.csv")
+```
+
+# modzcta map + data
+```{r}
+data <- read.csv("/Users/hhxl/Documents/DS1/Final_Project/DS_FinalPro/Group7_ACS.csv") %>%
+  select(-1)
+us_count <- st_read("/Users/hhxl/Documents/DS1/Final_Project/DS_FinalPro/tl_rd22_us_county/tl_rd22_us_county.shp")
+modzcta <- us_count %>%
+  filter(STATEFP == 34) %>%
+  select(-c("STATEFP", "COUNTYFP", "COUNTYNS", "NAME", "NAMELSAD", "LSAD", "CLASSFP", "MTFCC", "CSAFP"))
+```
+# try
+```{r}
+modzcta <- modzcta[order(modzcta$GEOID),] %>%
+  select(GEOID, geometry)
+data$GEOID <- as.character(data$GEOID)
+data$NAME <- gsub(pattern = ",.*", replacement = "", x = data$NAME) 
+
+data <- left_join(modzcta, data, by = "GEOID")
+```
+
+# export with map
+```{r}
+write_rds(data, file = "Group7_ACS_witmap.RDS")
+```
+
+# interactive map
+```{r}
+fig <- plot_ly(data, 
+               split = ~paste("Median income in", NAME, "\n is", Medincome),
+               color = ~Medincome,
+               colors = 'Purples',
+               stroke = I("black"),
+               showlegend = FALSE)
+fig
+```
+
