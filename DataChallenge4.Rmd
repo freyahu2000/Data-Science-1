@@ -1,0 +1,83 @@
+---
+title: "Data Challenge 4: Monty Hall Simulation"
+author: "Ziyan Hu"
+date: "Due 5:59pm on Nov 6, 2023"
+output:
+  html_document:
+---
+
+Link to the github: <https://github.com/freyahu2000/DataChallenge4>
+
+## Question 1
+First write a function that does one play of the Monty Hall simulation. Have an argument `switch` which tells if the contestant uses the strategy of switching the door `(switch = TRUE)` or `(switch = FALSE)`.
+
+- First use `sample()` to select the door that the contestant picks and the door that the prize is under
+- Next use an if else statement to show what door is revealed if (1) the contestant guessed the correct door or (2) if the contestant did not guess the correct door
+- Use an if statement to switch guesses of the door if `switch = TRUE`
+- return a logical (TRUE/FALSE) indicating if the game was won or not
+
+### Solution
+```{r}
+set.seed(1234)  
+MontyHallSimulation <- function(switch){
+  # initialize doors
+  doors <- 1:3
+  # contestant's choice
+  contestant_pick <- sample(doors,1)
+  # prize's location
+  prize_door <- sample(doors,1)
+  # if contestant chose the prize door
+  if (contestant_pick == prize_door){
+    # doors excluding contestant's pick
+    remaining_doors <- doors[doors != contestant_pick]
+    # door host reveals
+    reveal_door <- sample(remaining_doors,1)
+    # if contestant switches, they lose
+    if(switch == TRUE){
+      return(FALSE)
+    }
+  # if contestant didn't choose the prize door
+  } else {
+    # door host reveals
+    reveal_door <- doors[doors != contestant_pick 
+                         & doors != prize_door]
+    # if contestant doesn't switch, they lose
+    if(switch == FALSE){
+      return(FALSE)
+    }
+  }
+  # if none of the above, contestant win
+  return(TRUE)
+}
+
+# one time simulation 
+MontyHallSimulation(TRUE)
+```
+
+## Question 2
+Next write a function that performs the simulation multiple times. Have an argument for the number of times to run the simulation `(n)` and the strategy `(switch)`. Check out the `replicate()` function which may be useful.
+
+### Solution
+```{r}
+set.seed(1234)
+MontyHallSimulationN <- function(n,switch){
+  # perform monty hall simulation n times
+  results <- replicate(n,MontyHallSimulation(switch))
+  return(results)
+}
+```
+
+```{r}
+# simulate 1000 times with switch strategy
+switchSimulation <- MontyHallSimulationN(1000, TRUE)
+# winning probability with switch
+switchWinProb <- sum(switchSimulation == TRUE)/1000 
+switchWinProb
+# simulate 1000 times without switch
+noSwitchSimulation <- MontyHallSimulationN(1000, FALSE)
+# winning probability without switch
+noSwitchProb <- sum(noSwitchSimulation == TRUE)/1000 
+noSwitchProb
+```
+
+Therefore, from the 1000 times simulations we can see that switching door strategy has greater probability to win the prize.

@@ -1,0 +1,172 @@
+---
+title: "Data Challenge 5: Clustering Tissue Samples"
+author: "Ziyan Hu"
+date: "Due 5:59pm on Nov 17, 2023"
+output:
+  html_document:
+    toc: yes
+    toc_float: yes
+---
+Link to the github: <https://github.com/freyahu2000/DataChallenge5>
+```{r,echo=FALSE}
+knitr::opts_chunk$set(error=FALSE, message=FALSE, warning=FALSE,
+                      echo=T, tidy.opts=list(width.cutoff=60),tidy=TRUE)
+```
+
+```{r}
+library(tidyverse)
+```
+
+
+## Problem 1
+Use the gene expression data in `Ch10Ex11.csv` that is provided for you on Canvas. This is gene expression data that consists of 40 tissue samples with measurements on 1,000 genes. The first 20 samples are from healthy patients, while the second 20 are from a diseased group.
+
+- Load the data – note that there is no header so you will need to read this in without one. Note that rows in this dataset represent genes and columns subjects. You will need to transpose the data using the function `t()` before you cluster (as we would like to cluster subjects).
+- Scale the data.
+- Using the code from the lecture notes and the `kmeans` function in R, produce the associated elbow plot (i.e., a plot of within-cluster sum of squares vs. cluster size). You can use 1 through 15 for your k values. Given your plot, what is the appropriate number of clusters for the data? Why?
+- Cluster the scaled data using the `kmeans` function in R. Try this with the number of clusters you concluded in Step 3 and 50 iterations.
+- Summarize the results in a contingency table. A contingency table is a tabular representation of categorical data that typically shows the frequency of the combinations of the two variables (i.e., an m by n table). Here we would like to show a table of our clustering versus the true disease status of the subjects. Create a variable of the disease status for the 40 tissue samples. Use the clustering that you obtained in the previous step. Create a table of the two variables using `table()`. Comment on what you observe.
+- Don’t forget to set a seed number before running any function that introduces randomness!
+
+### Solution
+**1.1**
+```{r}
+# load the gene expression data
+gene <- read_csv("Ch10Ex11.csv",col_names = FALSE)
+# transpose the data
+gene <- t(gene)
+```
+
+**1.2**
+``` {r}
+# transpose and scale the data
+scaled_gene<- scale(gene)
+```
+
+**1.3**
+``` {r}
+# calculate within-cluster sum of squares for different k values
+set.seed(123)
+wss <- function(k, data) {
+  kmeans(data, k, nstart = 50)$tot.withinss
+}
+
+# define a range of k values to assess
+k_values <- 1:15
+
+# map the wss function across the range of k values for 'scaled_gene' data
+wss_values <- map_dbl(k_values, wss, data = scaled_gene)
+
+# create a tibble to store WCSS and corresponding k values
+wss_values <- tibble(wss = wss_values, k = k_values)
+
+# plot WCSS against the number of clusters k
+g <- ggplot(wss_values, aes(x = k, y = wss)) +
+    geom_point() +  
+    geom_line() +  
+    labs(x = "k-values",
+         y = "within-cluster sum of squares", 
+         title = "A plot of within-cluster sum of squares vs. cluster size") 
+
+# display the plot
+g
+```
+
+The wss decrease as k increases, and the 'elbow' is the point where the rate of decrease sharply changes. The appropriate number of clusters for the data is k=2, because there is a distinct bend at k=2 in above elbow plot.
+
+**1.4**
+```{r}
+k_means_results <- kmeans(scaled_gene,
+                          centers = 2,
+                          nstart = 50)
+k_means_results
+```
+
+**1.5**
+```{r}
+status <- c(rep("Healthy", 20), rep("Diseased", 20))
+contingency_table <- table(Clusters = k_means_results$cluster, DiseaseStatus = status)
+print(contingency_table)
+```
+
+## Problem 2
+Perform hierarchical clustering on the same scaled data set.
+
+- Calculate the Euclidean distance between the observations.
+- Perform hierarchical clustering on the data using the below linkages, and plot the dendograms for each linkage:
+  - complete linkage
+  - single linkage
+  - average linkage
+- Determine clusters for 2 groups from all three methods using `cutree()`.
+- Make three contingency tables for the results. Comment on what you observe.
+
+### Solution
+
+**2.3**
+```{r}
+eu_dist <- dist(scaled_gene,method = "euclidean")
+```
+
+
+**2.4.1**
+```{r}
+# calculate the complete linkage
+hc_complete <- hclust(eu_dist,method = "complete")
+
+# plot the dendrogram for complete linkage
+plot(hc_complete, main = "Dendrogram of Complete Linkage")
+```
+
+**2.4.2**
+```{r}
+# calculate the single linkage
+hc_single <- hclust(eu_dist,method = "single")
+
+# plot the dendrogram for single linkage
+plot(hc_single, main = "Dendrogram of Single Linkage")
+```
+
+
+**2.4.3**
+```{r}
+# calculate the average linkage
+hc_average <- hclust(eu_dist,method = "average")
+
+# plot the dendrogram for average linkage
+plot(hc_average, main = "Dendrogram of Average Linkage")
+```
+
+
+**2.5**
+```{r}
+# determine clusters for 2 groups from complete method
+clusters_complete <- cutree(hc_complete,k=2)
+clusters_complete
+
+# determine clusters for 2 groups from single method
+clusters_single <- cutree(hc_single,k=2)
+clusters_single
+
+# determine clusters for 2 groups from average method
+clusters_average <- cutree(hc_average,k=2)
+clusters_average
+```
+
+**2.6**
+```{r}
+# create contingency table for complete linkage
+table(clusters_complete,status)
+
+# create contingency table for single linkage
+table(clusters_single,status)
+
+# create contingency table for average linkage
+table(clusters_average,status)
+```
+
+## Problem 3
+Write a few sentences commenting on the results you obtained in Problems 1 and 2.
+
+### Solution
+All three hierarchical clustering linkage methods (complete, single, and average) produced the same clustering results, with 2 clear clusters separating the healthy and diseased groups. The contigency tables for both k-means and hierarchical clustering showed perfect separation - all healthy samples fell into one cluster and diseased into the other. The elbow plot from the k-means clustering showed a clear elbow at k=2 clusters, indicating 2 clusters is the optimal number for this data. This matches what we would expect given there are two known groups. Both k-means clustering and hierarchical clustering showed a clear separation of the data into two distinct clusters that aligned perfectly with disease status. This suggests there are detectable differences in gene expression between the healthy and diseased groups.
+

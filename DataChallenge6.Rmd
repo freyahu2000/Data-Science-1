@@ -1,0 +1,197 @@
+---
+title: "Data Challenge 5: Clustering Tissue Samples"
+author: "Ziyan Hu"
+date: "Due 5:59pm on Nov 17, 2023"
+output:
+  html_document:
+    toc: yes
+    toc_float: yes
+---
+Link to the github: <https://github.com/freyahu2000/DataChallenge6>
+```{r,echo=FALSE}
+knitr::opts_chunk$set(error=FALSE, message=FALSE, warning=FALSE,
+                      echo=T, tidy.opts=list(width.cutoff=60),tidy=TRUE)
+```
+
+```{r,echo=FALSE}
+library(tidyverse)
+```
+
+### 1.Simulate Data
+We will begin by simulating some data to do principal component analysis (PCA) and clustering on. Use the following provided code to simulate data for this exercise. We will be simulating data from two groups.
+```{r}
+## load in required libraries 
+library(hbim)
+library(mvtnorm)
+
+## set a seed for reproducibility
+set.seed(12345)
+
+## create an exhangeable variance covariance for the data
+sigma <- make.v(n = 100, r = .6, sig2 = 1)
+
+## create centers for the two clusters. 
+center_1 <- rep(1, 100)
+center_2 <- rep(3, 100)
+
+## simulate data for two groups from a multivariate normal distribution 
+data = rbind(rmvnorm(50, mean = center_1, sigma = sigma),
+             rmvnorm(50, mean = center_2, sigma = sigma))
+
+## add a group label to the data 
+data = data.frame(group = c(rep(1, 50), rep(2, 50)),
+                  data) 
+```
+
+### 2.Visualize the Data
+Next we will visualize the data.
+
+- Create density plots colored by group membership of the first three variables in the dataset. Comment on what you observe.
+- Look at the correlation of the data using `corrplot::corrplot`. Comment on what you observe.
+```{r}
+## load the required libraries
+library(corrplot)
+
+## create density plots
+data %>%
+  select(group, X1, X2, X3) %>%
+  pivot_longer(-group, names_to = "variables", values_to = "value") %>%
+  ggplot(aes(x = value,fill = as.factor(group))) + 
+    geom_density(alpha = 0.7) +
+    facet_wrap(~variables, scales = 'free_x') +
+    labs(x = "Value", 
+         y = "Density", 
+         fill = "Group Number",
+         title = "Density plot of X1, X2 and X3 colored by group")
+
+## calculate the correlated matrix
+cor_matrix <- cor(data[,2:4])
+
+## plot the correlation of the data
+corrplot(cor_matrix, method = "circle")
+```
+
+### 3.Perform PCA on the Data
+- Perform PCA on the data.
+- Make a plot of the cumulative variance explained by the PCs.
+- Make bivariate plots of all combinations of the scores on the first, second, and third PC colored by group membership.
+```{r}
+## perform the pca on data and scale within prcomp
+pca_data <- prcomp(data[-1],center = FALSE, scale. = TRUE)
+
+## proportion of variance explained by each PC
+pca_sum <- summary(pca_data)
+
+## calculate cumulative variance
+cum_var <- tibble(PC = 1:100,
+                          cum_var=summary(pca_data)$importance[3,])
+
+
+## plot the cumulative proportion of the variation explained by each PC 
+ggplot(cum_var, aes(x = PC, y = cum_var)) +
+  geom_point() +
+  labs(title = "Scree Plot: Cumulative Variance Explained by Each Principal Component",
+       y = "Cumulative Variance",
+       x = "Principal Component") 
+
+## create the bivariate plot
+biplot(pca_data,choices = 1:2,cex = c(0.7, 0.6))
+groups <- as.factor(data$group)
+colors <- rainbow(length(levels(groups)))
+
+## add points to each group
+for (i in seq_along(levels(groups))) {
+  group_points <- pca_data$x[groups == levels(groups)[i], 1:2]
+  points(group_points, col = colors[i], pch = 16)
+}
+
+## add the legend
+legend("topright", legend = levels(groups), col = colors, pch = 16)
+```
+
+```{r}
+## add another bivariate plot (PC1 vs PC3)
+biplot(pca_data,choices = c(1,3),cex = c(0.7, 0.6))
+for (i in seq_along(levels(groups))) {
+  group_points <- pca_data$x[groups == levels(groups)[i], c(1,3)]
+  points(group_points, col = colors[i], pch = 16)
+}
+legend("topright", legend = levels(groups), col = colors, pch = 16)
+```
+
+```{r}
+## add last bivariate plot (PC2 vs PC3)
+biplot(pca_data,choices = c(2,3),cex = c(0.7, 0.6))
+for (i in seq_along(levels(groups))) {
+  group_points <- pca_data$x[groups == levels(groups)[i], c(2,3)]
+  points(group_points, col = colors[i], pch = 16)
+}
+legend("topright", legend = levels(groups), col = colors, pch = 16)
+```
+
+### 4.Cluster
+- Cluster the original data into 2 clusters using
+
+    1.k-means
+    
+    2.Gaussian mixture model
+    
+Create a contingency matrix with the true cluster labels to summarize each clustering result.
+
+- Rather than performing clustering on the entire data matrix, we can simply perform clustering on the first few principal component score vectors. Sometimes performing clustering on the first few principal component score vectors can give better results than performing clustering on the full data with the results. Repeat the two clustering methods with the first 10 principal component scores and create a contingency matrix.
+
+- Comment on what you observe.
+
+#### 4.1
+```{r}
+## load the mclust library
+library(mclust)
+
+## conduct the k-means into 2 clusters
+k_means_results <- kmeans(data[-1],
+                          centers = 2)
+
+## conduct Gaussian mixture model into 2 clusters
+gmm_results <- Mclust(data[-1], G = 2)
+
+## create contingency table
+# Assuming 'TrueLabels' is the column with true cluster labels
+contingency_matrix_kmeans <- table(TrueLabels = data$group, KMeansClusters = k_means_results$cluster)
+contingency_matrix_gmm <- table(TrueLabels = data$group, GMMClusters = gmm_results$classification)
+
+contingency_matrix_kmeans
+contingency_matrix_gmm
+
+```
+
+#### 4.2
+```{r}
+## perform clustering on the first 10 principal component
+## conduct the k-means into 2 clusters
+k_means_results <- kmeans(data[,2:11],
+                          centers = 2)
+
+## conduct Gaussian mixture model into 2 clusters
+gmm_results <- Mclust(data[,2:11], G = 2)
+
+## create contingency table
+# Assuming 'TrueLabels' is the column with true cluster labels
+contingency_matrix_kmeans <- table(TrueLabels = data$group, KMeansClusters = k_means_results$cluster)
+contingency_matrix_gmm <- table(TrueLabels = data$group, GMMClusters = gmm_results$classification)
+
+contingency_matrix_kmeans
+contingency_matrix_gmm
+
+```
+
+**KMeansClusters vs TrueLabels:**
+
+- Cluster 1: Out of the 50 data points that are actually in True Label 1, K-Means correctly identified 45 of them. However, it incorrectly identified 5 data points that belong to True Label 2 as belonging to Cluster 1.
+- Cluster 2: Out of the 50 data points that are actually in True Label 2, K-Means correctly identified 39 of them. However, it incorrectly identified 11 data points that belong to True Label 1 as belonging to Cluster 2.
+
+**GMMClusters vs TrueLabels:**
+
+- Cluster 1: Out of the 50 data points that are actually in True Label 1, GMM correctly identified 13 of them. However, it incorrectly identified 37 data points that belong to True Label 2 as belonging to Cluster 1.
+- Cluster 2: Out of the 50 data points that are actually in True Label 2, GMM correctly identified 7 of them. However, it incorrectly identified 43 data points that belong to True Label 1 as belonging to Cluster 2.
+
+K-Means appears to be more accurate than GMM in this particular instance. It has a higher number of correct classifications in both Cluster 1 and Cluster 2. The performance difference could be due to the nature of the data. K-Means tends to perform well on spherical clusters, while GMM is better suited for data where clusters have different covariance structures.
